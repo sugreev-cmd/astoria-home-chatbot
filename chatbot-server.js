@@ -122,11 +122,17 @@ What would you like to know?`;
 // Webhook
 app.post('/webhook', async (req, res) => {
   try {
+
+    console.log("========== WEBHOOK ==========");
+    console.log(JSON.stringify(req.body, null, 2));
+
     const data = req.body;
 
     if (!data.messages || data.messages.length === 0) {
       return res.json({ success: true });
     }
+
+    const message = data.messages[0];
 
     const message = data.messages[0];
     const fromNumber = message.from_number;
