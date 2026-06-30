@@ -27,7 +27,6 @@ const PRODUCTS = [
     material: 'Polyester Fabric',
     dimensions: '2.5 x 1.5 meters',
     colors: ['Red', 'Blue', 'Beige'],
-    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc',
     stock: 'Available'
   },
   {
@@ -39,7 +38,6 @@ const PRODUCTS = [
     material: 'Wood & Fabric',
     dimensions: '1.6 x 2.0 meters',
     colors: ['Brown', 'White', 'Black'],
-    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab',
     stock: 'Available'
   },
   {
@@ -51,7 +49,6 @@ const PRODUCTS = [
     material: 'Solid Wood',
     dimensions: '1.8 x 0.9 meters',
     colors: ['Oak', 'Walnut'],
-    image: 'https://images.unsplash.com/photo-1472707169080-9049773400b5',
     stock: 'Available'
   }
 ];
@@ -64,8 +61,7 @@ const SHOWROOM = {
   address: '145, M.G. Road, Sultanpur, New Delhi – 110030',
   phone: '9560511085',
   timing: '10 AM to 8 PM',
-  website: 'www.astoriahome.com',
-  email: 'info@astoriahome.com'
+  website: 'www.astoriahome.com'
 };
 
 // ============================================
@@ -86,7 +82,7 @@ async function sendWhatsAppMessage(phoneNumber, messageText) {
       message: messageText
     };
 
-    const response = await axios.post(API_URL, payload);
+    await axios.post(API_URL, payload);
     console.log(`✅ Message sent to ${phone}`);
     return true;
   } catch (error) {
@@ -123,8 +119,7 @@ function formatProductMessage(product) {
 
 // Format Showroom Message
 function formatShowroomMessage() {
-  return `
-🏠 *${SHOWROOM.name}*
+  return `🏠 *${SHOWROOM.name}*
 
 📍 *Address:*
 ${SHOWROOM.address}
@@ -135,14 +130,10 @@ ${SHOWROOM.timing}
 📞 *Phone:*
 ${SHOWROOM.phone}
 
-✉️ *Email:*
-${SHOWROOM.email}
-
 🌐 *Website:*
 ${SHOWROOM.website}
 
-Visit us to see our complete collection in person! ✨
-  `.trim();
+Visit us to see our collection! ✨`;
 }
 
 // Generate Smart Reply
@@ -163,55 +154,43 @@ function generateSmartReply(userMessage) {
     if (searchResults.length === 1) {
       return formatProductMessage(searchResults[0]);
     } else {
-      let msg = `📦 *Found ${searchResults.length} Products:*\n\n`;
+      let reply = `📦 *Found ${searchResults.length} Products:*\n\n`;
       searchResults.forEach((p, i) => {
-        msg += `${i + 1}. *${p.name}* - ₹${p.price}\n`;
+        reply += `${i + 1}. *${p.name}* - ₹${p.price}\n`;
       });
-      msg += `\nReply with product name for details!`;
-      return msg;
+      reply += `\nReply with product name for details!`;
+      return reply;
     }
   }
 
   // Price Inquiry
-  if (msg.includes('price') || msg.includes('cost') || 
-      msg.includes('rupees') || msg.includes('₹')) {
+  if (msg.includes('price') || msg.includes('cost') || msg.includes('rupees') || msg.includes('₹')) {
     let reply = `💰 *Price List:*\n\n`;
     PRODUCTS.forEach(p => {
       reply += `*${p.name}:* ₹${p.price}\n`;
     });
-    reply += `\nReply with product name for full details!`;
+    reply += `\nReply with product name for details!`;
     return reply;
   }
 
   // Color Inquiry
-  if (msg.includes('color') || msg.includes('red') || 
-      msg.includes('blue') || msg.includes('beige') ||
-      msg.includes('black') || msg.includes('white') ||
-      msg.includes('brown')) {
-    return `🎨 We have multiple color options!\n\nReply with product name to see available colors!\nExample: "Sofa" or "Bed"`;
+  if (msg.includes('color') || msg.includes('red') || msg.includes('blue') || 
+      msg.includes('beige') || msg.includes('black') || msg.includes('white') || msg.includes('brown')) {
+    return `🎨 We have multiple color options!\n\nTell me which product you're interested in:\n• Sofa\n• Bed\n• Table`;
   }
 
-  // Material/Dimension Inquiry
-  if (msg.includes('material') || msg.includes('size') || 
-      msg.includes('dimension') || msg.includes('specification')) {
-    return `📐 Tell me which product you're interested in!\n\nWe have:\n• Premium Sofa\n• Bed Set\n• Dining Table\n\nReply with product name!`;
-  }
+  // Default Welcome
+  return `👋 Welcome to *Astoria Home*!
 
-  // Default Welcome Message
-  return `
-👋 Welcome to *Astoria Home*!
-
-I'm here to help you with:
-🛋️ Product Information
-💰 Pricing Details
-🎨 Color Variants
-📐 Dimensions & Materials
+I can help with:
+🛋️ Products
+💰 Prices
+🎨 Colors
 📍 Showroom Location
-⏰ Opening Hours
-📞 Contact Information
+⏰ Hours
+📞 Contact
 
-What would you like to know?
-  `.trim();
+What would you like?`;
 }
 
 // ============================================
@@ -220,63 +199,61 @@ What would you like to know?
 
 // Health Check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'Bot is running ✅',
-    timestamp: new Date().toISOString(),
-    products: PRODUCTS.length
-  });
+  res.json({ status: 'Bot running ✅' });
 });
 
-// Webhook Handler
+// Main Webhook
 app.post('/webhook', async (req, res) => {
   try {
     console.log('\n📨 Webhook received');
     
     const data = req.body;
-
-    // Validate request
-    if (!data.messages || data.messages.length === 0) {
-      console.log('⚠️ No messages in request');
-      return res.json({ success: true, message: 'No messages' });
+    
+    // Handle MayTapi format
+    let phoneNumber, userMessage;
+    
+    // Check if data has messages array (new format)
+    if (data.messages && data.messages.length > 0) {
+      const msg = data.messages[0];
+      phoneNumber = msg.from_number;
+      userMessage = msg.text?.body || msg.text || 'Hi';
+      console.log(`✅ Format 1: Messages array`);
     }
-
-    const message = data.messages[0];
-    const fromNumber = message.from_number;
-    const userText = message.text?.body || 'Hi';
-
-    console.log(`👤 From: ${fromNumber}`);
-    console.log(`💬 Message: ${userText}`);
-
+    // Check if data has direct properties (different format)
+    else if (data.from_number && data.text) {
+      phoneNumber = data.from_number;
+      userMessage = data.text.body || data.text || 'Hi';
+      console.log(`✅ Format 2: Direct properties`);
+    }
+    // No valid message found
+    else {
+      console.log(`⚠️ No valid message format found`);
+      console.log(`📦 Received data:`, JSON.stringify(data).substring(0, 200));
+      return res.json({ success: false, message: 'No valid message format' });
+    }
+    
+    console.log(`👤 From: ${phoneNumber}`);
+    console.log(`💬 Message: ${userMessage}`);
+    
     // Generate Reply
-    const reply = generateSmartReply(userText);
-    console.log(`📤 Reply: ${reply.substring(0, 50)}...`);
-
+    const reply = generateSmartReply(userMessage);
+    console.log(`📤 Sending reply...`);
+    
     // Send Reply
-    const sent = await sendWhatsAppMessage(fromNumber, reply);
-
-    res.json({ 
-      success: sent,
-      message: 'Reply sent',
-      userMessage: userText
-    });
-
+    const sent = await sendWhatsAppMessage(phoneNumber, reply);
+    
+    if (sent) {
+      console.log(`✅ Reply sent successfully\n`);
+      res.json({ success: true, message: 'Reply sent' });
+    } else {
+      console.log(`❌ Failed to send reply\n`);
+      res.json({ success: false, message: 'Failed to send' });
+    }
+    
   } catch (error) {
-    console.error(`❌ Error: ${error.message}`);
-    res.status(500).json({ 
-      error: error.message,
-      success: false
-    });
+    console.error(`❌ Webhook Error: ${error.message}\n`);
+    res.status(500).json({ error: error.message });
   }
-});
-
-// Test Route
-app.post('/test', (req, res) => {
-  const testMessage = generateSmartReply('Hello');
-  res.json({ 
-    success: true,
-    message: testMessage,
-    products: PRODUCTS.length
-  });
 });
 
 // ============================================
@@ -289,10 +266,9 @@ app.listen(PORT, () => {
 ╔════════════════════════════════════════╗
 ║   🤖 ASTORIA HOME WHATSAPP CHATBOT    ║
 ║                                        ║
-║   ✅ Bot is running on port ${PORT}         ║
+║   ✅ Bot is READY on port ${PORT}         ║
 ║   ✅ Webhook: /webhook                ║
 ║   ✅ Health: /health                  ║
-║   ✅ Products: ${PRODUCTS.length}                   ║
 ║                                        ║
 ║   📍 ${SHOWROOM.name}                ║
 ║   📞 ${SHOWROOM.phone}                    ║
