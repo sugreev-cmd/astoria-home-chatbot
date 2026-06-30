@@ -255,7 +255,49 @@ app.post('/webhook', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// ============================================
+// TEMP ROUTE TO SET WEBHOOK
+// ============================================
 
+app.get("/set-webhook", async (req, res) => {
+  try {
+    const axios = require("axios");
+
+    const response = await axios.post(
+      `https://api.maytapi.com/api/${process.env.MAYTAPI_PRODUCT_ID}/${process.env.MAYTAPI_PHONE_ID}/config`,
+      {
+        webhook: "https://astoria-home-chatbot-production.up.railway.app/webhook"
+      },
+      {
+        headers: {
+          "x-maytapi-key": process.env.MAYTAPI_TOKEN
+        }
+      }
+    );
+
+    res.json(response.data);
+
+  } catch (e) {
+    res.status(500).json({
+      status: e.response?.status,
+      data: e.response?.data,
+      error: e.message
+    });
+  }
+});
+
+
+// ============================================
+// START SERVER
+// ============================================
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Bot Started");
+});
+
+module.exports = app;
 // ============================================
 // START SERVER
 // ============================================
