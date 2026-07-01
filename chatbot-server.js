@@ -290,17 +290,6 @@ app.get("/set-webhook", async (req, res) => {
 // ============================================
 // START SERVER
 // ============================================
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Bot Started");
-});
-
-module.exports = app;
-// ============================================
-// START SERVER
-// ============================================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
