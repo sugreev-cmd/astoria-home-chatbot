@@ -212,24 +212,39 @@ app.post('/webhook', async (req, res) => {
     // Handle MayTapi format
     let phoneNumber, userMessage;
     
-    // Check if data has messages array (new format)
-    if (data.messages && data.messages.length > 0) {
-      const msg = data.messages[0];
-      phoneNumber = msg.from_number;
+    // Format 1: MayTAPI nested message object — { message: { text, from_number, ... }, phone_id, ... }
+    if (data.message && typeof data.message === 'object') {
+      const msg = data.message;
       userMessage = msg.text?.body || msg.text || 'Hi';
-      console.log(`✅ Format 1: Messages array`);
+      // MayTAPI may expose the sender in several fields; try each in order
+      phoneNumber = msg.from_number || msg.from || msg.sender || msg.author;
+      console.log(`✅ Format 1: MayTAPI nested message object`);
     }
-    // Check if data has direct properties (different format)
+    // Format 2: messages array — { messages: [{ from_number, text, ... }] }
+    else if (data.messages && data.messages.length > 0) {
+      const msg = data.messages[0];
+      phoneNumber = msg.from_number || msg.from || msg.sender;
+      userMessage = msg.text?.body || msg.text || 'Hi';
+      console.log(`✅ Format 2: Messages array`);
+    }
+    // Format 3: flat properties — { from_number, text }
     else if (data.from_number && data.text) {
       phoneNumber = data.from_number;
       userMessage = data.text.body || data.text || 'Hi';
-      console.log(`✅ Format 2: Direct properties`);
+      console.log(`✅ Format 3: Direct properties`);
     }
     // No valid message found
     else {
       console.log(`⚠️ No valid message format found`);
       console.log(`📦 Received data:`, JSON.stringify(data).substring(0, 200));
       return res.json({ success: false, message: 'No valid message format' });
+    }
+
+    // Guard: skip if we still couldn't resolve a phone number
+    if (!phoneNumber) {
+      console.log(`⚠️ Could not determine sender phone number`);
+      console.log(`📦 Received data:`, JSON.stringify(data).substring(0, 200));
+      return res.json({ success: false, message: 'Could not determine sender phone number' });
     }
     
     console.log(`👤 From: ${phoneNumber}`);
