@@ -216,8 +216,26 @@ app.post('/webhook', async (req, res) => {
     if (data.message && typeof data.message === 'object') {
       const msg = data.message;
       userMessage = msg.text?.body || msg.text || 'Hi';
-      // MayTAPI may expose the sender in several fields; try each in order
+
+      // 1a. Try explicit sender fields inside the message object
       phoneNumber = msg.from_number || msg.from || msg.sender || msg.author;
+
+      // 1b. Fall back to top-level phone_id (MayTAPI sometimes puts the sender here)
+      if (!phoneNumber && data.phone_id) {
+        phoneNumber = data.phone_id.toString();
+        console.log(`📞 Using top-level phone_id as sender: ${phoneNumber}`);
+      }
+
+      // 1c. Parse from the message ID string, e.g. "false_247390787371183@lid_..."
+      //     The digits between the first underscore and the @ are the sender's number.
+      if (!phoneNumber && msg.id && typeof msg.id === 'string') {
+        const idMatch = msg.id.match(/_(\d{7,15})@/);
+        if (idMatch) {
+          phoneNumber = idMatch[1];
+          console.log(`📞 Extracted phone from message ID: ${phoneNumber}`);
+        }
+      }
+
       console.log(`✅ Format 1: MayTAPI nested message object`);
     }
     // Format 2: messages array — { messages: [{ from_number, text, ... }] }
