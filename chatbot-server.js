@@ -212,8 +212,14 @@ app.post('/webhook', async (req, res) => {
     // Handle MayTapi format
     let phoneNumber, userMessage;
     
+    // Format 0: New MayTAPI wrapped format — { body: { type, user: { phone, ... }, message: { text, ... } } }
+    if (data.body && typeof data.body === 'object') {
+      phoneNumber = data.body.user?.phone;
+      userMessage = data.body.message?.text || 'Hi';
+      console.log(`✅ Format 0: New MayTAPI body-wrapped format`);
+    }
     // Format 1: MayTAPI nested message object — { message: { text, from_number, ... }, phone_id, ... }
-    if (data.message && typeof data.message === 'object') {
+    else if (data.message && typeof data.message === 'object') {
       const msg = data.message;
       userMessage = msg.text?.body || msg.text || 'Hi';
 
